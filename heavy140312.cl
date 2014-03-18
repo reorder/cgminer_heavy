@@ -1500,26 +1500,24 @@ inline void Mangle(uint *S)
 
     uchar4 vr = as_uchar4((R[0] ^ (R[0] >> 4)) & 0x0f0f0f0f);
 
-    int i;
+    C[0] ^= rotate((int)R[0], 32 - vr.w);
+    uint tmp = C[0];
 
-    /* Diffuse */
-    uint tmp = 0;
-//    uint r = ;
 #pragma unroll
-    for (i = 0; i < 3; i++) {
+    for (int i = 1; i < 3; i++) {
         switch (Smoosh2(tmp)) {
-        case 0:
-            C[i] ^= rotate((int)R[0], 32 - (i + vr.w));
-            break;
-        case 1:
-            C[i] += rotate((int)(~R[0]), 32 - i - vr.z);
-            break;
-        case 2:
-            C[i] &= rotate((int)(~R[0]), 32 - i - vr.y);
-            break;
-        case 3:
-            C[i] ^= rotate((int)R[0], 32 - i - vr.x);
-            break;
+            case 0:
+                C[i] ^= rotate((int)R[0], 32 - (i + vr.w));
+                break;
+            case 1:
+                C[i] += rotate((int)(~R[0]), 32 - i - vr.z);
+                break;
+            case 2:
+                C[i] &= rotate((int)(~R[0]), 32 - i - vr.y);
+                break;
+            case 3:
+                C[i] ^= rotate((int)R[0], 32 - i - vr.x);
+                break;
         }
         tmp ^= C[i];
     }
