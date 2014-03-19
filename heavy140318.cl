@@ -652,7 +652,7 @@ inline void groestl_load_tables(__local ulong* tables)
 
 inline uint groestl512_116_last(uint * restrict msg, __local ulong *tables)
 {
-#if 1
+#if 0
     __constant ulong* groestl_lt0 = GROESTL_T0;
 #else
     groestl_load_tables(tables);
