@@ -100,13 +100,12 @@ void heavy_regenhash(struct work *work)
 extern bool heavy_prepare_work(struct thr_info *thr, struct work *work)
 {
     unsigned int src[21], dst[21]; // 32-aligned
-//    memcpy(src, work->data, 84);
-//    flip80(dst, src);
-//    dst[20] = swab32(src[20]);
-//    memcpy(work->blk.heavy_data, dst, 84);
+    memcpy(src, work->data, 84);
+    flip80(dst, src);
+    hefty_midstate((unsigned char *)dst, work->blk.heavy_data + 84);
     memcpy(work->blk.heavy_data, work->data, 84);
     char *hdata = bin2hex(work->blk.heavy_data, 84);
-    applog(LOG_DEBUG, "Generated heavy data %s", hdata);
+//    applog(LOG_DEBUG, "Generated heavy data %s", hdata);
     free(hdata);
     return 1;
 }

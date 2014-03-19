@@ -58,6 +58,7 @@ void HEFTY1_Init(HEFTY1_CTX *cxt);
 void HEFTY1_Update(HEFTY1_CTX *cxt, const void *data, size_t len);
 void HEFTY1_Final(unsigned char *digest, HEFTY1_CTX *cxt);
 unsigned char* HEFTY1(const unsigned char *data, size_t len, unsigned char *digest);
+void hefty_midstate(const unsigned char *buf, unsigned char *midstate);
 
 #ifdef __cplusplus
 }

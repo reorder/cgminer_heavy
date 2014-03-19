@@ -47,7 +47,7 @@ extern char *curly;
 #define KECCAK_BUFFER_SIZE (20*4)
 #endif
 #ifdef USE_HEAVY
-#define HEAVY_BUFFER_SIZE (21*4)
+#define HEAVY_BUFFER_SIZE ((21+4+8)*4)
 #endif
 #ifdef STDC_HEADERS
 # include <stdlib.h>
