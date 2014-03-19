@@ -698,6 +698,24 @@ build:
 
     if (!clState->hasOpenCL11plus)
         strcat(CompilerOptions, " -D OCL1");
+#ifdef USE_HEAVY
+    if (opt_heavy && strstr(name, "Cedar") ||
+             strstr(name, "Redwood") ||
+             strstr(name, "Juniper") ||
+             strstr(name, "Cypress" ) ||
+             strstr(name, "Hemlock" ) ||
+             strstr(name, "Caicos" ) ||
+             strstr(name, "Turks" ) ||
+             strstr(name, "Barts" ) ||
+             strstr(name, "Cayman" ) ||
+             strstr(name, "Antilles" ) ||
+             strstr(name, "Wrestler" ) ||
+             strstr(name, "Zacate" ) ||
+             strstr(name, "WinterPark" )) {
+        applog(LOG_DEBUG, "Const-to-local copy broken on device, disabling");
+        strcat(CompilerOptions, " -D BROKEN_LOCAL");
+    }
+#endif
 
     applog(LOG_DEBUG, "CompilerOptions: %s", CompilerOptions);
     status = clBuildProgram(clState->program, 1, &devices[gpu], CompilerOptions , NULL, NULL);

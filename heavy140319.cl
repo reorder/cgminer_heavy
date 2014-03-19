@@ -1160,7 +1160,7 @@ inline void groestl_load_tables(__local ulong* tables)
 
 inline uint groestl512_116_last(const uint *msg, __local ulong *tables)
 {
-#ifdef BFI_INT
+#ifdef BROKEN_LOCAL
     __constant ulong* groestl_lt0 = GROESTL_T0;
     __constant ulong* groestl_lt1 = GROESTL_T1;
     __constant ulong* groestl_lt2 = GROESTL_T2;
