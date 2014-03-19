@@ -645,14 +645,15 @@ __constant ulong GROESTL_T0[256] = {
 
 inline void groestl_load_tables(__local ulong* tables)
 {
-    for (int i = 0; i < 16; i++)
-        vstore16(vload16(i, GROESTL_T0), i, tables);
-    barrier(CLK_LOCAL_MEM_FENCE);
+    for (int i = 0; i < 256; i++)
+        tables[i] = GROESTL_T0[i];
+    //vstore4(vload4(i, GROESTL_T0), i, tables);
+    //barrier(CLK_LOCAL_MEM_FENCE);
 }
 
 inline uint groestl512_116_last(uint * restrict msg, __local ulong *tables)
 {
-#if 0
+#ifdef BFI_INT
     __constant ulong* groestl_lt0 = GROESTL_T0;
 #else
     groestl_load_tables(tables);

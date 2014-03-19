@@ -1499,7 +1499,7 @@ static struct opt_table opt_config_table[] = {
             opt_set_bool, &opt_heavy,
             "Use the heavyhash algorithm for mining (heavycoin)"),
     OPT_WITH_ARG("--vote",
-             opt_set_vote, opt_show_intval, NULL,
+             opt_set_vote, NULL, NULL,
              "Heavycoin vote"),
 #endif
     OPT_WITH_ARG("--sharelog",

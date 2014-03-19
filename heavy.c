@@ -89,7 +89,7 @@ void heavy_regenhash(struct work *work)
     flip80(data, datacopy);
     data[20] = swab32(datacopy[20]);
 
-    char *hdata = bin2hex(data, 84);
+    char *hdata = bin2hex((const unsigned char *)data, 84);
     applog(LOG_DEBUG, "Verifying heavy data %s", hdata);
     free(hdata);
 

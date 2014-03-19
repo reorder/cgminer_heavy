@@ -666,7 +666,7 @@ build:
     if (clState->vwidth > 1)
         applog(LOG_DEBUG, "Patched source to suit %d vectors", clState->vwidth);
 
-    if (clState->hasBitAlign && !opt_keccak && !opt_skein && !opt_heavy) {
+    if (clState->hasBitAlign && !opt_keccak && !opt_skein) {
         strcat(CompilerOptions, " -D BITALIGN");
         applog(LOG_DEBUG, "cl_amd_media_ops found, setting BITALIGN");
         if (!clState->hasOpenCL12plus &&
@@ -756,7 +756,7 @@ build:
 
     /* Patch the kernel if the hardware supports BFI_INT but it needs to
      * be hacked in */
-    if (patchbfi) {
+    if (patchbfi && !opt_heavy) {
         unsigned remaining = binary_sizes[slot];
         char *w = binaries[slot];
         unsigned int start, length;
