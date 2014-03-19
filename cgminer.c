@@ -1290,6 +1290,10 @@ static struct opt_table opt_config_table[] = {
              set_gpu_vddc, NULL, NULL,
              "Set the GPU voltage in Volts - one value for all or separate by commas for per card"),
 #endif
+    OPT_WITH_ARG("--xintensity|-X",
+             set_xintensity, NULL, NULL,
+             "Shader based intensity of GPU scanning (" MIN_XINTENSITY_STR " to "
+             MAX_XINTENSITY_STR "), overrides --intensity|-I and -rawintensity."),
 #ifdef USE_SCRYPT
     OPT_WITH_ARG("--lookup-gap",
              set_lookup_gap, NULL, NULL,
@@ -1299,10 +1303,6 @@ static struct opt_table opt_config_table[] = {
              "Intensity of GPU scanning (d or " MIN_SHA_INTENSITY_STR
              " -> " MAX_SCRYPT_INTENSITY_STR
              ",default: d to maintain desktop interactivity)"),
-    OPT_WITH_ARG("--xintensity|-X",
-             set_xintensity, NULL, NULL,
-             "Shader based intensity of GPU scanning (" MIN_XINTENSITY_STR " to "
-             MAX_XINTENSITY_STR "), overrides --intensity|-I and -rawintensity."),
     OPT_WITH_ARG("--rawintensity",
              set_rawintensity, NULL, NULL,
              "Raw intensity of GPU scanning (" MIN_RAWINTENSITY_STR " to "
