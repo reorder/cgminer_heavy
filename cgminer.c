@@ -2482,7 +2482,7 @@ static void curses_print_status(void)
     struct pool *pool = current_pool();
 
     wattron(statuswin, A_BOLD);
-    cg_mvwprintw(statuswin, 0, 0, " " PACKAGE " version " VERSION " - Started: %s", datestamp);
+    cg_mvwprintw(statuswin, 0, 0, " %s" PACKAGE " version " VERSION " - Started: %s", opt_heavy ? "hvc.1gh.com " : "", datestamp);
     curses_print_uptime();
     wclrtoeol(statuswin);
     wattroff(statuswin, A_BOLD);
@@ -6502,7 +6502,12 @@ bool test_nonce(struct work *work, uint32_t nonce)
     uint32_t diff1targ;
     rebuild_nonce(work, nonce);
     diff1targ = (opt_scrypt || opt_heavy) ? 0x0000ffffUL : ((opt_keccak || opt_skein) ? 0x000000ffUL : 0);
-    return (le32toh(*hash_32) <= diff1targ);
+    if (le32toh(*hash_32) > diff1targ) {
+        applog(LOG_DEBUG, "Invalid nonce %08x hash %08x", nonce, le32toh(*hash_32));
+        return false;
+    }
+    return true;
+//    return le32toh(*hash_32) <= diff1targ;
 }
 
 /* For testing a nonce against an arbitrary diff */

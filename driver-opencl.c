@@ -1379,6 +1379,10 @@ static cl_int queue_heavy_kernel(_clState *clState, dev_blk_ctx *blk, __maybe_un
                 0, NULL,NULL);
 
         CL_SET_ARG(clState->heavy_CLbuffer);
+        CL_SET_ARG(blk->sha_mask);
+        CL_SET_ARG(blk->keccak_mask);
+        CL_SET_ARG(blk->groestl_mask);
+        CL_SET_ARG(blk->blake_mask);
         CL_SET_ARG(clState->outputBuffer);
 
         return status;

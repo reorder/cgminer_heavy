@@ -1292,6 +1292,10 @@ typedef struct {
 #endif
 #ifdef USE_HEAVY
     unsigned char heavy_data[HEAVY_BUFFER_SIZE];
+    uint32_t sha_mask;
+    uint32_t keccak_mask;
+    uint32_t groestl_mask;
+    uint32_t blake_mask;
 #endif
 } dev_blk_ctx;
 #else

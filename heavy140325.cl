@@ -47,22 +47,22 @@ rol64hackr(61)
 rol64hackr(62)
 
 __constant uint K[64] = {
-    0x428a2f98UL, 0x71374491UL, 0xb5c0fbcfUL, 0xe9b5dba5UL,
-    0x3956c25bUL, 0x59f111f1UL, 0x923f82a4UL, 0xab1c5ed5UL,
-    0xd807aa98UL, 0x12835b01UL, 0x243185beUL, 0x550c7dc3UL,
-    0x72be5d74UL, 0x80deb1feUL, 0x9bdc06a7UL, 0xc19bf174UL,
-    0xe49b69c1UL, 0xefbe4786UL, 0x0fc19dc6UL, 0x240ca1ccUL,
-    0x2de92c6fUL, 0x4a7484aaUL, 0x5cb0a9dcUL, 0x76f988daUL,
-    0x983e5152UL, 0xa831c66dUL, 0xb00327c8UL, 0xbf597fc7UL,
-    0xc6e00bf3UL, 0xd5a79147UL, 0x06ca6351UL, 0x14292967UL,
-    0x27b70a85UL, 0x2e1b2138UL, 0x4d2c6dfcUL, 0x53380d13UL,
-    0x650a7354UL, 0x766a0abbUL, 0x81c2c92eUL, 0x92722c85UL,
-    0xa2bfe8a1UL, 0xa81a664bUL, 0xc24b8b70UL, 0xc76c51a3UL,
-    0xd192e819UL, 0xd6990624UL, 0xf40e3585UL, 0x106aa070UL,
-    0x19a4c116UL, 0x1e376c08UL, 0x2748774cUL, 0x34b0bcb5UL,
-    0x391c0cb3UL, 0x4ed8aa4aUL, 0x5b9cca4fUL, 0x682e6ff3UL,
-    0x748f82eeUL, 0x78a5636fUL, 0x84c87814UL, 0x8cc70208UL,
-    0x90befffaUL, 0xa4506cebUL, 0xbef9a3f7UL, 0xc67178f2UL
+    0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U,
+    0x3956c25bU, 0x59f111f1U, 0x923f82a4U, 0xab1c5ed5U,
+    0xd807aa98U, 0x12835b01U, 0x243185beU, 0x550c7dc3U,
+    0x72be5d74U, 0x80deb1feU, 0x9bdc06a7U, 0xc19bf174U,
+    0xe49b69c1U, 0xefbe4786U, 0x0fc19dc6U, 0x240ca1ccU,
+    0x2de92c6fU, 0x4a7484aaU, 0x5cb0a9dcU, 0x76f988daU,
+    0x983e5152U, 0xa831c66dU, 0xb00327c8U, 0xbf597fc7U,
+    0xc6e00bf3U, 0xd5a79147U, 0x06ca6351U, 0x14292967U,
+    0x27b70a85U, 0x2e1b2138U, 0x4d2c6dfcU, 0x53380d13U,
+    0x650a7354U, 0x766a0abbU, 0x81c2c92eU, 0x92722c85U,
+    0xa2bfe8a1U, 0xa81a664bU, 0xc24b8b70U, 0xc76c51a3U,
+    0xd192e819U, 0xd6990624U, 0xf40e3585U, 0x106aa070U,
+    0x19a4c116U, 0x1e376c08U, 0x2748774cU, 0x34b0bcb5U,
+    0x391c0cb3U, 0x4ed8aa4aU, 0x5b9cca4fU, 0x682e6ff3U,
+    0x748f82eeU, 0x78a5636fU, 0x84c87814U, 0x8cc70208U,
+    0x90befffaU, 0xa4506cebU, 0xbef9a3f7U, 0xc67178f2U,
 };
 
 #define S0(x) (ROL32(x, 25) ^ ROL32(x, 14) ^  (x >> 3))
@@ -1181,7 +1181,6 @@ inline uint groestl512_116_last(const uint *msg, __local ulong *tables)
     __local ulong* groestl_lt7 = groestl_lt6 + 256;
 #endif
 
-
     ulong Z0, Z1, Z2, Z3, Z4, Z5, Z6, Z7, Z8, Z9, ZA, ZB, ZC, ZD, ZE, ZF;
     ulong H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, HA, HB, HC, HD, HE, HF;
     ulong Y0, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, YA, YB, YC, YD, YE, YF;
@@ -1456,8 +1455,6 @@ inline uint keccak512_116_last(const uint *msg)
     return as_uint2(Abo).y;
 }
 
-
-#define Min(A, B) (A <= B ? A : B)
 #define RoundFunc(sponge, A, B, C, D, E, F, G, H, W, K)                    \
         brG = Br(sponge, G);                                      \
         tmp1 = F1(E, Br(sponge, F), brG) + H + W + K;             \
@@ -1490,33 +1487,42 @@ inline uint Smoosh2(uint X) {
 
 inline void Mangle(uint *S)
 {
-    uint *R = S;
-    uint *C = &S[1];
+    uint R = S[0];
 
-    uchar4 vr = as_uchar4((R[0] ^ (R[0] >> 4)) & 0x0f0f0f0f);
+    uchar4 vr = as_uchar4((R ^ (R >> 4)) & 0x0f0f0f0f);
 
-    C[0] ^= rotate((int)R[0], 32 - vr.w);
-    uint tmp = C[0];
+    S[1] ^= rotate((int)R, 32 - vr.w);
 
-#pragma unroll
-    for (int i = 1; i < 3; i++) {
-        switch (Smoosh2(tmp)) {
-            case 0:
-                C[i] ^= rotate((int)R[0], 32 - (i + vr.w));
-                break;
-            case 1:
-                C[i] += rotate((int)(~R[0]), 32 - i - vr.z);
-                break;
-            case 2:
-                C[i] &= rotate((int)(~R[0]), 32 - i - vr.y);
-                break;
-            case 3:
-                C[i] ^= rotate((int)R[0], 32 - i - vr.x);
-                break;
-        }
-        tmp ^= C[i];
+    switch (Smoosh2(S[1])) {
+        case 0:
+            S[2] ^= rotate((int)R, 31 - vr.w);
+            break;
+        case 1:
+            S[2] += rotate((int)(~R), 31 - vr.z);
+            break;
+        case 2:
+            S[2] &= rotate((int)(~R), 31 - vr.y);
+            break;
+        case 3:
+            S[2] ^= rotate((int)R, 31 - vr.x);
+            break;
     }
-    R[0] ^= ((R[1] ^ R[2]) + R[3]);
+
+    switch (Smoosh2(S[1] ^ S[2])) {
+        case 0:
+            S[3] ^= rotate((int)R, 30 - vr.w);
+            break;
+        case 1:
+            S[3] += rotate((int)(~R), 30 - vr.z);
+            break;
+        case 2:
+            S[3] &= rotate((int)(~R), 30 - vr.y);
+            break;
+        case 3:
+            S[3] ^= rotate((int)R, 30 - vr.x);
+            break;
+    }
+    S[0] = R ^ ((S[1] ^ S[2]) + S[3]);
 }
 
 inline void Absorb(uint *S, uint X)
@@ -1533,7 +1539,6 @@ inline uint Squeeze(uint *S)
     return Y;
 }
 
-/* Branch, compress and serialize function */
 inline uint Br(uint sponge[4], uint X)
 {
     uint R = Squeeze(sponge);
@@ -1551,9 +1556,17 @@ inline uint Br(uint sponge[4], uint X)
 #define HHALF1(i, k) Absorb(sponge, D ^ H); RoundFunc(sponge, A, B, C, D, E, F, G, H, W[i], k);
 #define HHALF2(i, w, k) Absorb(sponge, H + D); RoundFunc(sponge, A, B, C, D, E, F, G, H, w, k);
 
-
-inline uint8 HeftyBlock(uint W[16], uint sponge[4], uint8 h)
+inline uint8 hefty84(const uint* msg, uint sponge[4], uint8 h)
 {
+    uint W[16];
+    W[0] = msg[16];
+    W[1] = msg[17];
+    W[2] = msg[18];
+    W[3] = msg[19];
+    W[4] = msg[20];
+    W[5] = 0x80000000U;
+    W[6] = W[7] = W[8] = W[9] = W[10] = W[11] = W[12] = W[13] = W[14] = 0;
+    W[15] = 0x2a0;
     uint A = h.s0, B = h.s1, C = h.s2, D = h.s3, E = h.s4, F = h.s5, G = h.s6, H = h.s7;
     uint brG, tmp1, tmp2, brC, brB, tmp3, tmp4;
 
@@ -1569,25 +1582,11 @@ inline uint8 HeftyBlock(uint W[16], uint sponge[4], uint8 h)
     return h + (uint8)(A, B, C, D, E, F, G, H);
 }
 
-inline uint8 hefty84(const uint* msg, uint sponge[4], uint8 h)
-{
-    uint W[16];
-    W[0] = msg[16];
-    W[1] = msg[17];
-    W[2] = msg[18];
-    W[3] = msg[19];
-    W[4] = msg[20];
-    W[5] = 0x80000000U;
-    W[6] = W[7] = W[8] = W[9] = W[10] = W[11] = W[12] = W[13] = W[14] = 0;
-    W[15] = 0x2a0;
-    return HeftyBlock(W, sponge, h);
-}
-
-
-#define RESULT_MASK 0xF3000000U
-
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
-__kernel void search(__global const uint*restrict data, __global uint*restrict output)
+__kernel void search(__global const uint*restrict data,
+                                    const uint sha_mask, const uint keccak_mask,
+                                    const uint groestl_mask, const uint blake_mask,
+                                    __global volatile uint*restrict output)
 {
     __local ulong groestl_tables[2048];
 
@@ -1604,16 +1603,16 @@ __kernel void search(__global const uint*restrict data, __global uint*restrict o
 
     vstore8(hefty84(hashx, sponge, vload8(0, data + 25)), 0, hashx + 21);
 
-    if ((sha256_116_last(hashx) & RESULT_MASK) != 0)
+    if ((sha256_116_last(hashx) & sha_mask) != 0)
         return;
-    if ((blake512_116_last(hashx) & RESULT_MASK) != 0)
+    if ((blake512_116_last(hashx) & blake_mask) != 0)
         return;
-    if ((keccak512_116_last(hashx) & RESULT_MASK) != 0)
+    if ((keccak512_116_last(hashx) & keccak_mask) != 0)
         return;
-    if ((groestl512_116_last(hashx, groestl_tables) & RESULT_MASK) != 0)
+    if ((groestl512_116_last(hashx, groestl_tables) & groestl_mask) != 0)
         return;
 
-#define FOUND (0x0F)
+#define FOUND (0xF)
 #define SETFOUND(Xnonce) output[output[FOUND]++] = Xnonce
     SETFOUND(nonce);
 }

@@ -1,4 +1,5 @@
 #include <string.h>
+#include <math.h>
 
 #include "sha2.h"
 #include "hefty1.h"
@@ -97,16 +98,33 @@ void heavy_regenhash(struct work *work)
     memcpy(work->hash, &result, 32);
 }
 
-extern bool heavy_prepare_work(struct thr_info *thr, struct work *work)
+uint32_t bitreverse(uint32_t x)
+{
+    x = (((x & 0xaaaaaaaa) >> 1) | ((x & 0x55555555) << 1));
+    x = (((x & 0xcccccccc) >> 2) | ((x & 0x33333333) << 2));
+    x = (((x & 0xf0f0f0f0) >> 4) | ((x & 0x0f0f0f0f) << 4));
+    x = (((x & 0xff00ff00) >> 8) | ((x & 0x00ff00ff) << 8));
+    return((x >> 16) | (x << 16));
+
+}
+
+bool heavy_prepare_work(struct thr_info *thr, struct work *work)
 {
     unsigned int src[21], dst[21]; // 32-aligned
+    int tbits;
     memcpy(src, work->data, 84);
     flip80(dst, src);
     hefty_midstate((unsigned char *)dst, work->blk.heavy_data + 84);
     memcpy(work->blk.heavy_data, work->data, 84);
     char *hdata = bin2hex(work->blk.heavy_data, 84);
-//    applog(LOG_DEBUG, "Generated heavy data %s", hdata);
+    applog(LOG_DEBUG, "Generated heavy data %s", hdata);
     free(hdata);
+    tbits = 31 + ((int)round(log(work->sdiff) / log(2)));
+    work->blk.sha_mask = bitreverse((1 << ((tbits + 3) / 4)) - 1);
+    work->blk.keccak_mask = bitreverse((1 << ((tbits + 2) / 4)) - 1);
+    work->blk.groestl_mask = bitreverse((1 << ((tbits + 1) / 4)) - 1);
+    work->blk.blake_mask = bitreverse((1 << ((tbits + 0) / 4)) - 1);
+    applog(LOG_DEBUG, "Heavy masks for %f, tbits %d: sha 0x%08x, keccak 0x%08x, groestl 0x%08x, blake 0x%08x", work->sdiff, tbits, work->blk.sha_mask, work->blk.keccak_mask, work->blk.groestl_mask, work->blk.blake_mask);
     return 1;
 }
 
