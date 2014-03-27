@@ -512,7 +512,7 @@ AC_DEFINE_UNQUOTED([DIABLO_KERNNAME], ["diablo130302"], [Filename for diablo ker
 AC_DEFINE_UNQUOTED([SCRYPT_KERNNAME], ["scrypt130511"], [Filename for scrypt kernel])
 AC_DEFINE_UNQUOTED([KECCAK_KERNNAME], ["keccak130718"], [Filename for keccak kernel])
 AC_DEFINE_UNQUOTED([SKEIN_KERNNAME], ["skein"], [Filename for skein kernel])
-AC_DEFINE_UNQUOTED([HEAVY_KERNNAME], ["heavy140325"], [Filename for heavy kernel])
+AC_DEFINE_UNQUOTED([HEAVY_KERNNAME], ["heavy140327"], [Filename for heavy kernel])
 
 
 AC_SUBST(OPENCL_LIBS)
