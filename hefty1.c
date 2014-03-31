@@ -382,6 +382,9 @@ void hefty_midstate(const unsigned char *buf, unsigned char *midstate)
     HEFTY1_CTX ctx;
     HEFTY1_Init(&ctx);
     HEFTY1_Update(&ctx, buf, 64);
+    Absorb((&ctx)->sponge, Reverse32(((unsigned int*)buf)[16]) ^ K[0]);
+    Absorb((&ctx)->sponge, Reverse32(((unsigned int*)buf)[17]) ^ K[1]);
+    Absorb((&ctx)->sponge, Reverse32(((unsigned int*)buf)[18]) ^ K[2]);
     int i;
     for (i = 0; i < 4; i++)
         ((uint32_t*)midstate)[i] = (&ctx)->sponge[i];

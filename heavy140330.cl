@@ -1,4 +1,5 @@
 #define ROL32(x, n) rotate(x, (uint) n)
+
 #define SWAP32(a) (as_uint(as_uchar4(a).wzyx))
 #define SWAP64(n)       (as_ulong(as_uchar8(n).s76543210))
 
@@ -65,6 +66,9 @@ __constant uint K[64] = {
     0x90befffaU, 0xa4506cebU, 0xbef9a3f7U, 0xc67178f2U,
 };
 
+__constant uint H[] = {0x6a09e667U, 0xbb67ae85U, 0x3c6ef372U, 0xa54ff53aU,
+                       0x510e527fU, 0x9b05688cU, 0x1f83d9abU, 0x5be0cd19U};
+
 #define S0(x) (ROL32(x, 25) ^ ROL32(x, 14) ^  (x >> 3))
 #define S1(x) (ROL32(x, 15) ^ ROL32(x, 13) ^  (x >> 10))
 
@@ -101,6 +105,10 @@ __constant uint K[64] = {
 #define R13 (W13 = S1(W11) + W6 + S0(W14) + W13)
 #define R14 (W14 = S1(W12) + W7 + S0(W15) + W14)
 #define R15 (W15 = S1(W13) + W8 + S0(W0) + W15)
+#define RD11 (S1(W9) + W4 + S0(W12) + W11)
+#define RD12 (S1(W10) + W5 + S0(W13) + W12)
+#define RD14 (W14 = S1(W12) + W7 + S0(W15) + W14)
+#define RD15 (S1(W13) + W8 + S0(W0) + W15)
 
 inline uint sha256_116_last(const uint *data)
 {
@@ -198,8 +206,8 @@ inline uint sha256_116_last(const uint *data)
     P( v5, v6, v7, v0, v1, v2, v3, v4, R11, 0x8CC70208 );
     P( v4, v5, v6, v7, v0, v1, v2, v3, R12, 0x90BEFFFA );
     P( v3, v4, v5, v6, v7, v0, v1, v2, R13, 0xA4506CEB );
-    P( v2, v3, v4, v5, v6, v7, v0, v1, R14, 0xBEF9A3F7 );
-    P( v1, v2, v3, v4, v5, v6, v7, v0, R15, 0xC67178F2 );
+    P( v2, v3, v4, v5, v6, v7, v0, v1, RD14, 0xBEF9A3F7 );
+    P( v1, v2, v3, v4, v5, v6, v7, v0, RD15, 0xC67178F2 );
 
     v0 += 0x6A09E667;
     v1 += 0xBB67AE85;
@@ -291,11 +299,8 @@ inline uint sha256_116_last(const uint *data)
     P( v0, v1, v2, v3, v4, v5, v6, v7, R8,  0x748F82EE );
     P( v7, v0, v1, v2, v3, v4, v5, v6, R9,  0x78A5636F );
     P( v6, v7, v0, v1, v2, v3, v4, v5, R10, 0x84C87814 );
-    P( v5, v6, v7, v0, v1, v2, v3, v4, R11, 0x8CC70208 );
-    P( v4, v5, v6, v7, v0, v1, v2, v3, R12, 0x90BEFFFA );
-//    P( v3, v4, v5, v6, v7, v0, v1, v2, R13, 0xA4506CEB );
-//    P( v2, v3, v4, v5, v6, v7, v0, v1, R14, 0xBEF9A3F7 );
-//    P( v1, v2, v3, v4, v5, v6, v7, v0, R15, 0xC67178F2 );
+    P( v5, v6, v7, v0, v1, v2, v3, v4, RD11, 0x8CC70208 );
+    PLAST( v4, v5, v6, v7, v0, v1, v2, v3, RD12, 0x90BEFFFA );
 
     v7 += s7;
     return SWAP32(v7);
@@ -1240,12 +1245,9 @@ inline uint groestl512_116_last(const uint *msg, __local ulong *tables)
     H8 ^= Y8; H9 ^= Y9; HA ^= YA; HB ^= YB;
     HC ^= YC; HD ^= YD; HE ^= YE; HF ^= YF ^ 0x0002000000000000UL;
 
-    T0 = H0; T1 = H1; T2 = H2; T3 = H3;
-    T4 = H4; T5 = H5; T6 = H6; T7 = H7;
-    T8 = H8; T9 = H9; TA = HA; TB = HB;
-    TC = HC; TD = HD; TE = HE; TF = HF;
+    TB = HB;
 
-    GROESTL_RND1024P(T, Y, 0);
+    GROESTL_RND1024P(H, Y, 0);
     GROESTL_RND1024P(Y, Z, 1UL);
     GROESTL_RND1024P(Z, Y, 2UL);
     GROESTL_RND1024P(Y, Z, 3UL);
@@ -1262,215 +1264,193 @@ inline uint groestl512_116_last(const uint *msg, __local ulong *tables)
     return as_uint2(HB ^ TB).y;
 }
 
-#define keccak_round(const0, const1) \
-{ \
-        BCa = Aba^Aga^Aka^Ama^Asa; BCe = Abe^Age^Ake^Ame^Ase; \
-        BCi = Abi^Agi^Aki^Ami^Asi; BCo = Abo^Ago^Ako^Amo^Aso; \
-        BCu = Abu^Agu^Aku^Amu^Asu; \
-        Da = BCu ^ rol64_1(BCe); De = BCa ^ rol64_1(BCi); \
-        Di = BCe ^ rol64_1(BCo); Do = BCi ^ rol64_1(BCu); \
-        Du = BCo ^ rol64_1(BCa); \
-        Aba ^= Da; BCa = Aba; Age ^= De; BCe = rol64_44(Age); \
-        Aki ^= Di; BCi = rol64_43(Aki); \
-        Amo ^= Do; BCo = rol64_21(Amo); \
-        Asu ^= Du; BCu = rol64_14(Asu); \
-        Eba =   BCa ^((~BCe)&  BCi ); \
-        Eba ^= const0; \
-        Ebe =   BCe ^((~BCi)&  BCo ); Ebi =   BCi ^((~BCo)&  BCu ); \
-        Ebo =   BCo ^((~BCu)&  BCa ); Ebu =   BCu ^((~BCa)&  BCe ); \
-        Abo ^= Do; \
-        BCa = rol64_28(Abo); \
-        Agu ^= Du; \
-        BCe = rol64_20(Agu); \
-        Aka ^= Da; \
-        BCi = rol64_3(Aka); \
-        Ame ^= De; \
-        BCo = rol64_45(Ame); \
-        Asi ^= Di; \
-        BCu = rol64_61(Asi); \
-        Ega =   BCa ^((~BCe)&  BCi ); \
-        Ege =   BCe ^((~BCi)&  BCo ); \
-        Egi =   BCi ^((~BCo)&  BCu ); \
-        Ego =   BCo ^((~BCu)&  BCa ); \
-        Egu =   BCu ^((~BCa)&  BCe ); \
-        Abe ^= De; \
-        BCa = rol64_1(Abe); \
-        Agi ^= Di; \
-        BCe = rol64_6(Agi); \
-        Ako ^= Do; \
-        BCi = rol64_25(Ako); \
-        Amu ^= Du; \
-        BCo = rol64_8(Amu); \
-        Asa ^= Da; \
-        BCu = rol64_18(Asa); \
-        Eka =   BCa ^((~BCe)&  BCi ); \
-        Eke =   BCe ^((~BCi)&  BCo ); \
-        Eki =   BCi ^((~BCo)&  BCu ); \
-        Eko =   BCo ^((~BCu)&  BCa ); \
-        Eku =   BCu ^((~BCa)&  BCe ); \
-        Abu ^= Du; BCa = rol64_27(Abu); \
-        Aga ^= Da; BCe = rol64_36(Aga); \
-        Ake ^= De; BCi = rol64_10(Ake); \
-        Ami ^= Di; BCo = rol64_15(Ami); \
-        Aso ^= Do; BCu = rol64_56(Aso); \
-        Ema =   BCa ^((~BCe)&  BCi ); \
-        Eme =   BCe ^((~BCi)&  BCo ); \
-        Emi =   BCi ^((~BCo)&  BCu ); \
-        Emo =   BCo ^((~BCu)&  BCa ); \
-        Emu =   BCu ^((~BCa)&  BCe ); \
-        Abi ^= Di; BCa = rol64_62(Abi); \
-        Ago ^= Do; BCe = rol64_55(Ago); \
-        Aku ^= Du; BCi = rol64_39(Aku); \
-        Ama ^= Da; BCo = rol64_41(Ama); \
-        Ase ^= De; BCu = rol64_2(Ase); \
-        Esa =   BCa ^((~BCe)&  BCi ); \
-        Ese =   BCe ^((~BCi)&  BCo ); \
-        Esi =   BCi ^((~BCo)&  BCu ); \
-        Eso =   BCo ^((~BCu)&  BCa ); \
-        Esu =   BCu ^((~BCa)&  BCe ); \
-        BCa = Eba^Ega^Eka^Ema^Esa; \
-        BCe = Ebe^Ege^Eke^Eme^Ese; \
-        BCi = Ebi^Egi^Eki^Emi^Esi; \
-        BCo = Ebo^Ego^Eko^Emo^Eso; \
-        BCu = Ebu^Egu^Eku^Emu^Esu; \
-        Da = BCu ^ rol64_1(BCe); \
-        De = BCa ^ rol64_1(BCi); \
-        Di = BCe ^ rol64_1(BCo); \
-        Do = BCi ^ rol64_1(BCu); \
-        Du = BCo ^ rol64_1(BCa); \
-        Eba ^= Da; BCa = Eba; \
-        Ege ^= De; BCe = rol64_44(Ege); \
-        Eki ^= Di; BCi = rol64_43(Eki); \
-        Emo ^= Do; BCo = rol64_21(Emo); \
-        Esu ^= Du; BCu = rol64_14(Esu); \
-        Aba =   BCa ^((~BCe)&  BCi ); \
-        Aba ^= const1; \
-        Abe =   BCe ^((~BCi)&  BCo ); \
-        Abi =   BCi ^((~BCo)&  BCu ); \
-        Abo =   BCo ^((~BCu)&  BCa ); \
-        Abu =   BCu ^((~BCa)&  BCe ); \
-        Ebo ^= Do; BCa = rol64_28(Ebo); \
-        Egu ^= Du; BCe = rol64_20(Egu); \
-        Eka ^= Da; BCi = rol64_3(Eka); \
-        Eme ^= De; BCo = rol64_45(Eme); \
-        Esi ^= Di; BCu = rol64_61(Esi); \
-        Aga =   BCa ^((~BCe)&  BCi ); \
-        Age =   BCe ^((~BCi)&  BCo ); \
-        Agi =   BCi ^((~BCo)&  BCu ); \
-        Ago =   BCo ^((~BCu)&  BCa ); \
-        Agu =   BCu ^((~BCa)&  BCe ); \
-        Ebe ^= De; BCa = rol64_1(Ebe); \
-        Egi ^= Di; BCe = rol64_6(Egi); \
-        Eko ^= Do; BCi = rol64_25(Eko); \
-        Emu ^= Du; BCo = rol64_8(Emu); \
-        Esa ^= Da; BCu = rol64_18(Esa); \
-        Aka =   BCa ^((~BCe)&  BCi ); \
-        Ake =   BCe ^((~BCi)&  BCo ); \
-        Aki =   BCi ^((~BCo)&  BCu ); \
-        Ako =   BCo ^((~BCu)&  BCa ); \
-        Aku =   BCu ^((~BCa)&  BCe ); \
-        Ebu ^= Du; BCa = rol64_27(Ebu); \
-        Ega ^= Da; BCe = rol64_36(Ega); \
-        Eke ^= De; BCi = rol64_10(Eke); \
-        Emi ^= Di; BCo = rol64_15(Emi); \
-        Eso ^= Do; BCu = rol64_56(Eso); \
-        Ama =   BCa ^((~BCe)&  BCi ); \
-        Ame =   BCe ^((~BCi)&  BCo ); \
-        Ami =   BCi ^((~BCo)&  BCu ); \
-        Amo =   BCo ^((~BCu)&  BCa ); \
-        Amu =   BCu ^((~BCa)&  BCe ); \
-        Ebi ^= Di; BCa = rol64_62(Ebi); \
-        Ego ^= Do; BCe = rol64_55(Ego); \
-        Eku ^= Du; BCi = rol64_39(Eku); \
-        Ema ^= Da; BCo = rol64_41(Ema); \
-        Ese ^= De; BCu = rol64_2(Ese); \
-        Asa =   BCa ^((~BCe)&  BCi ); \
-        Ase =   BCe ^((~BCi)&  BCo ); \
-        Asi =   BCi ^((~BCo)&  BCu ); \
-        Aso =   BCo ^((~BCu)&  BCa ); \
-        Asu =   BCu ^((~BCa)&  BCe ); \
+inline uint2 rolv2_1(const uint2 x, const uint y)
+{
+    return (uint2)((x.x << y) ^ (x.y >> (32 - y)), (x.y << y) ^ (x.x >> (32 - y)));
+}
+inline uint2 rolv2_2(const uint2 x, const uint y)
+{
+    return (uint2)((x.y << y) ^ (x.x >> (32 - y)), (x.x << y) ^ (x.y >> (32 - y)));
 }
 
-inline uint keccak512_116_last(const uint *msg)
-{
-    ulong Aba, Abe, Abi, Abo, Abu;
-    ulong Aga, Age, Agi, Ago, Agu;
-    ulong Aka, Ake, Aki, Ako, Aku;
-    ulong Ama, Ame, Ami, Amo, Amu;
-    ulong Asa, Ase, Asi, Aso, Asu;
-    ulong BCa, BCe, BCi, BCo, BCu;
-    ulong Da, De, Di, Do, Du;
-    ulong Eba, Ebe, Ebi, Ebo, Ebu;
-    ulong Ega, Ege, Egi, Ego, Egu;
-    ulong Eka, Eke, Eki, Eko, Eku;
-    ulong Ema, Eme, Emi, Emo, Emu;
-    ulong Esa, Ese, Esi, Eso, Esu;
+#define keccak_round(const0, const1) \
+{ \
+    BCa = Aba^Aga^Aka^Ama^Asa; BCe = Abe^Age^Ake^Ame^Ase; \
+    BCi = Abi^Agi^Aki^Ami^Asi; BCo = Abo^Ago^Ako^Amo^Aso; BCu = Abu^Agu^Aku^Amu^Asu; \
+    Da = BCu ^ rolv2_1(BCe, 1); De = BCa ^ rolv2_1(BCi, 1); \
+    Di = BCe ^ rolv2_1(BCo, 1); Do = BCi ^ rolv2_1(BCu, 1); \
+    Du = BCo ^ rolv2_1(BCa, 1); \
+    Aba ^= Da; BCa = Aba; Age ^= De; BCe = rolv2_2(Age, 44); \
+    Aki ^= Di; BCi = rolv2_2(Aki, 43); \
+    Amo ^= Do; BCo = rolv2_1(Amo, 21); \
+    Asu ^= Du; BCu = rolv2_1(Asu, 14); \
+    Eba = bitselect(BCa ^ BCi, BCa, BCe) ^ const0; \
+    Ebe = bitselect(BCe ^ BCo, BCe, BCi); \
+    Ebi = bitselect(BCi ^ BCu, BCi, BCo); \
+    Ebo = bitselect(BCo ^ BCa, BCo, BCu); \
+    Ebu = bitselect(BCu ^ BCe, BCu, BCa); \
+    BCa = rolv2_1(Abo ^ Do, 28); BCe = rolv2_1(Agu ^ Du, 20); BCi = rolv2_1(Aka ^ Da, 3); \
+    BCo = rolv2_2(Ame ^ De, 45); BCu = rolv2_2(Asi ^ Di, 61); \
+    Ega = bitselect(BCa ^ BCi, BCa, BCe); \
+    Ege = bitselect(BCe ^ BCo, BCe, BCi); \
+    Egi = bitselect(BCi ^ BCu, BCi, BCo); \
+    Ego = bitselect(BCo ^ BCa, BCo, BCu); \
+    Egu = bitselect(BCu ^ BCe, BCu, BCa); \
+    BCa = rolv2_1(Abe ^ De, 1); \
+    BCe = rolv2_1(Agi ^ Di, 6); \
+    BCi = rolv2_1(Ako ^ Do, 25); \
+    BCo = rolv2_1(Amu ^ Du, 8); \
+    BCu = rolv2_1(Asa ^ Da, 18); \
+    Eka = bitselect(BCa ^ BCi, BCa, BCe); \
+    Eke = bitselect(BCe ^ BCo, BCe, BCi); \
+    Eki = bitselect(BCi ^ BCu, BCi, BCo); \
+    Eko = bitselect(BCo ^ BCa, BCo, BCu); \
+    Eku = bitselect(BCu ^ BCe, BCu, BCa); \
+    BCa = rolv2_1(Abu ^ Du, 27); \
+    BCe = rolv2_2(Aga ^ Da, 36); \
+    BCi = rolv2_1(Ake ^ De, 10); \
+    BCo = rolv2_1(Ami ^ Di, 15); \
+    BCu = rolv2_2(Aso ^ Do, 56); \
+    Ema = bitselect(BCa ^ BCi, BCa, BCe); \
+    Eme = bitselect(BCe ^ BCo, BCe, BCi); \
+    Emi = bitselect(BCi ^ BCu, BCi, BCo); \
+    Emo = bitselect(BCo ^ BCa, BCo, BCu); \
+    Emu = bitselect(BCu ^ BCe, BCu, BCa); \
+    BCa = rolv2_2(Abi ^ Di, 62); \
+    BCe = rolv2_2(Ago ^ Do, 55); \
+    BCi = rolv2_2(Aku ^ Du, 39); \
+    BCo = rolv2_2(Ama ^ Da, 41); \
+    BCu = rolv2_1(Ase ^ De, 2); \
+    Esa = bitselect(BCa ^ BCi, BCa, BCe); \
+    Ese = bitselect(BCe ^ BCo, BCe, BCi); \
+    Esi = bitselect(BCi ^ BCu, BCi, BCo); \
+    Eso = bitselect(BCo ^ BCa, BCo, BCu); \
+    Esu = bitselect(BCu ^ BCe, BCu, BCa); \
+    BCa = Eba^Ega^Eka^Ema^Esa; \
+    BCe = Ebe^Ege^Eke^Eme^Ese; \
+    BCi = Ebi^Egi^Eki^Emi^Esi; \
+    BCo = Ebo^Ego^Eko^Emo^Eso; \
+    BCu = Ebu^Egu^Eku^Emu^Esu; \
+    Da = BCu ^ rolv2_1(BCe, 1); \
+    De = BCa ^ rolv2_1(BCi, 1); \
+    Di = BCe ^ rolv2_1(BCo, 1); \
+    Do = BCi ^ rolv2_1(BCu, 1); \
+    Du = BCo ^ rolv2_1(BCa, 1); \
+    BCa = Eba ^ Da; \
+    BCe = rolv2_2(Ege ^ De, 44); \
+    BCi = rolv2_2(Eki ^ Di, 43); \
+    BCo = rolv2_1(Emo ^ Do, 21); \
+    BCu = rolv2_1(Esu ^ Du, 14); \
+    Aba = bitselect(BCa ^ BCi, BCa, BCe) ^ const1; \
+    Abe = bitselect(BCe ^ BCo, BCe, BCi); \
+    Abi = bitselect(BCi ^ BCu, BCi, BCo); \
+    Abo = bitselect(BCo ^ BCa, BCo, BCu); \
+    Abu = bitselect(BCu ^ BCe, BCu, BCa); \
+    BCa = rolv2_1(Ebo ^ Do, 28); \
+    BCe = rolv2_1(Egu ^ Du, 20); \
+    BCi = rolv2_1(Eka ^ Da, 3); \
+    BCo = rolv2_2(Eme ^ De, 45); \
+    BCu = rolv2_2(Esi ^ Di, 61); \
+    Aga = bitselect(BCa ^ BCi, BCa, BCe); \
+    Age = bitselect(BCe ^ BCo, BCe, BCi); \
+    Agi = bitselect(BCi ^ BCu, BCi, BCo); \
+    Ago = bitselect(BCo ^ BCa, BCo, BCu); \
+    Agu = bitselect(BCu ^ BCe, BCu, BCa); \
+    BCa = rolv2_1(Ebe ^ De, 1); \
+    BCe = rolv2_1(Egi ^ Di, 6); \
+    BCi = rolv2_1(Eko ^ Do, 25); \
+    BCo = rolv2_1(Emu ^ Du, 8); \
+    BCu = rolv2_1(Esa ^ Da, 18); \
+    Aka = bitselect(BCa ^ BCi, BCa, BCe); \
+    Ake = bitselect(BCe ^ BCo, BCe, BCi); \
+    Aki = bitselect(BCi ^ BCu, BCi, BCo); \
+    Ako = bitselect(BCo ^ BCa, BCo, BCu); \
+    Aku = bitselect(BCu ^ BCe, BCu, BCa); \
+    BCa = rolv2_1(Ebu ^ Du, 27); \
+    BCe = rolv2_2(Ega ^ Da, 36); \
+    BCi = rolv2_1(Eke ^ De, 10); \
+    BCo = rolv2_1(Emi ^ Di, 15); \
+    BCu = rolv2_2(Eso ^ Do, 56); \
+    Ama = bitselect(BCa ^ BCi, BCa, BCe); \
+    Ame = bitselect(BCe ^ BCo, BCe, BCi); \
+    Ami = bitselect(BCi ^ BCu, BCi, BCo); \
+    Amo = bitselect(BCo ^ BCa, BCo, BCu); \
+    Amu = bitselect(BCu ^ BCe, BCu, BCa); \
+    BCa = rolv2_2(Ebi ^ Di, 62); \
+    BCe = rolv2_2(Ego ^ Do, 55); \
+    BCi = rolv2_2(Eku ^ Du, 39); \
+    BCo = rolv2_2(Ema ^ Da, 41); \
+    BCu = rolv2_1(Ese ^ De, 2); \
+    Asa = bitselect(BCa ^ BCi, BCa, BCe); \
+    Ase = bitselect(BCe ^ BCo, BCe, BCi); \
+    Asi = bitselect(BCi ^ BCu, BCi, BCo); \
+    Aso = bitselect(BCo ^ BCa, BCo, BCu); \
+    Asu = bitselect(BCu ^ BCe, BCu, BCa); \
+}
 
-    Aba = as_ulong((uint2)(SWAP32(msg[0]), SWAP32(msg[1])));
-    Abe = as_ulong((uint2)(SWAP32(msg[2]), SWAP32(msg[3])));
-    Abi = as_ulong((uint2)(SWAP32(msg[4]), SWAP32(msg[5])));
-    Abo = as_ulong((uint2)(SWAP32(msg[6]), SWAP32(msg[7])));
-    Abu = as_ulong((uint2)(SWAP32(msg[8]), SWAP32(msg[9])));
-    Aga = as_ulong((uint2)(SWAP32(msg[10]), SWAP32(msg[11])));
-    Age = as_ulong((uint2)(SWAP32(msg[12]), SWAP32(msg[13])));
-    Agi = as_ulong((uint2)(SWAP32(msg[14]), SWAP32(msg[15])));
-    Ago = as_ulong((uint2)(SWAP32(msg[16]), SWAP32(msg[17])));
+inline uint keccak512_116_last(uint * restrict msg)
+{
+    uint2 Aba, Abe, Abi, Abo, Abu;
+    uint2 Aga, Age, Agi, Ago, Agu;
+    uint2 Aka, Ake, Aki, Ako, Aku;
+    uint2 Ama, Ame, Ami, Amo, Amu;
+    uint2 Asa, Ase, Asi, Aso, Asu;
+    uint2 BCa, BCe, BCi, BCo, BCu;
+    uint2 Da, De, Di, Do, Du;
+    uint2 Eba, Ebe, Ebi, Ebo, Ebu;
+    uint2 Ega, Ege, Egi, Ego, Egu;
+    uint2 Eka, Eke, Eki, Eko, Eku;
+    uint2 Ema, Eme, Emi, Emo, Emu;
+    uint2 Esa, Ese, Esi, Eso, Esu;
+
+    Aba = (uint2)(SWAP32(msg[0]), SWAP32(msg[1]));
+    Abe = (uint2)(SWAP32(msg[2]), SWAP32(msg[3]));
+    Abi = (uint2)(SWAP32(msg[4]), SWAP32(msg[5]));
+    Abo = (uint2)(SWAP32(msg[6]), SWAP32(msg[7]));
+    Abu = (uint2)(SWAP32(msg[8]), SWAP32(msg[9]));
+    Aga = (uint2)(SWAP32(msg[10]), SWAP32(msg[11]));
+    Age = (uint2)(SWAP32(msg[12]), SWAP32(msg[13]));
+    Agi = (uint2)(SWAP32(msg[14]), SWAP32(msg[15]));
+    Ago = (uint2)(SWAP32(msg[16]), SWAP32(msg[17]));
     Agu = 0; Aka = 0; Ake = 0; Aki = 0; Ako = 0; Aku = 0; Ama = 0; Ame = 0;
     Ami = 0; Amo = 0; Amu = 0; Asa = 0; Ase = 0; Asi = 0; Aso = 0; Asu = 0;
 
-    keccak_round(0x0000000000000001UL, 0x0000000000008082UL)
-    keccak_round(0x800000000000808AUL, 0x8000000080008000UL)
-    keccak_round(0x000000000000808BUL, 0x0000000080000001UL)
-    keccak_round(0x8000000080008081UL, 0x8000000000008009UL)
-    keccak_round(0x000000000000008AUL, 0x0000000000000088UL)
-    keccak_round(0x0000000080008009UL, 0x000000008000000AUL)
-    keccak_round(0x000000008000808BUL, 0x800000000000008BUL)
-    keccak_round(0x8000000000008089UL, 0x8000000000008003UL)
-    keccak_round(0x8000000000008002UL, 0x8000000000000080UL)
-    keccak_round(0x000000000000800AUL, 0x800000008000000AUL)
-    keccak_round(0x8000000080008081UL, 0x8000000000008080UL)
-    keccak_round(0x0000000080000001UL, 0x8000000080008008UL)
+    keccak_round((uint2)(1, 0), (uint2)(0x00008082, 0))
+    keccak_round((uint2)(0x0000808AU, 0x80000000U), (uint2)(0x80008000U, 0x80000000U))
+    keccak_round((uint2)(0x0000808BU, 0), (uint2)(0x80000001U, 0))
+    keccak_round((uint2)(0x80008081U, 0x80000000U), (uint2)(0x00008009U, 0x80000000U))
+    keccak_round((uint2)(0x0000008AU, 0), (uint2)(0x00000088U, 0))
+    keccak_round((uint2)(0x80008009U, 0), (uint2)(0x8000000AU, 0))
+    keccak_round((uint2)(0x8000808BU, 0), (uint2)(0x0000008BU, 0x80000000U))
+    keccak_round((uint2)(0x00008089U, 0x80000000U), (uint2)(0x00008003U, 0x80000000U))
+    keccak_round((uint2)(0x00008002U, 0x80000000U), (uint2)(0x00000080U, 0x80000000U))
+    keccak_round((uint2)(0x0000800AU, 0), (uint2)(0x8000000AU, 0x80000000U))
+    keccak_round((uint2)(0x80008081U, 0x80000000U), (uint2)(0x00008080U, 0x80000000U))
+    keccak_round((uint2)(0x80000001U, 0), (uint2)(0x80008008U, 0x80000000U))
 
-    Aba ^= as_ulong((uint2)(SWAP32(msg[18]), SWAP32(msg[19])));
-    Abe ^= as_ulong((uint2)(SWAP32(msg[20]), SWAP32(msg[21])));
-    Abi ^= as_ulong((uint2)(SWAP32(msg[22]), SWAP32(msg[23])));
-    Abo ^= as_ulong((uint2)(SWAP32(msg[24]), SWAP32(msg[25])));
-    Abu ^= as_ulong((uint2)(SWAP32(msg[26]), SWAP32(msg[27])));
-    Aga ^= as_ulong((uint2)(SWAP32(msg[28]), 1));
+    Aba ^= (uint2)(SWAP32(msg[18]), SWAP32(msg[19]));
+    Abe ^= (uint2)(SWAP32(msg[20]), SWAP32(msg[21]));
+    Abi ^= (uint2)(SWAP32(msg[22]), SWAP32(msg[23]));
+    Abo ^= (uint2)(SWAP32(msg[24]), SWAP32(msg[25]));
+    Abu ^= (uint2)(SWAP32(msg[26]), SWAP32(msg[27]));
+    Aga ^= (uint2)(SWAP32(msg[28]), 1);
 
-    Ago ^= 0x8000000000000000UL;
+    Ago ^= (uint2)(0, 0x80000000U);
 
-    keccak_round(0x0000000000000001UL, 0x0000000000008082UL)
-    keccak_round(0x800000000000808AUL, 0x8000000080008000UL)
-    keccak_round(0x000000000000808BUL, 0x0000000080000001UL)
-    keccak_round(0x8000000080008081UL, 0x8000000000008009UL)
-    keccak_round(0x000000000000008AUL, 0x0000000000000088UL)
-    keccak_round(0x0000000080008009UL, 0x000000008000000AUL)
-    keccak_round(0x000000008000808BUL, 0x800000000000008BUL)
-    keccak_round(0x8000000000008089UL, 0x8000000000008003UL)
-    keccak_round(0x8000000000008002UL, 0x8000000000000080UL)
-    keccak_round(0x000000000000800AUL, 0x800000008000000AUL)
-    keccak_round(0x8000000080008081UL, 0x8000000000008080UL)
-    keccak_round(0x0000000080000001UL, 0x8000000080008008UL)
-    return as_uint2(Abo).y;
+    keccak_round((uint2)(1, 0), (uint2)(0x00008082, 0))
+    keccak_round((uint2)(0x0000808AU, 0x80000000U), (uint2)(0x80008000U, 0x80000000U))
+    keccak_round((uint2)(0x0000808BU, 0), (uint2)(0x80000001U, 0))
+    keccak_round((uint2)(0x80008081U, 0x80000000U), (uint2)(0x00008009U, 0x80000000U))
+    keccak_round((uint2)(0x0000008AU, 0), (uint2)(0x00000088U, 0))
+    keccak_round((uint2)(0x80008009U, 0), (uint2)(0x8000000AU, 0))
+    keccak_round((uint2)(0x8000808BU, 0), (uint2)(0x0000008BU, 0x80000000U))
+    keccak_round((uint2)(0x00008089U, 0x80000000U), (uint2)(0x00008003U, 0x80000000U))
+    keccak_round((uint2)(0x00008002U, 0x80000000U), (uint2)(0x00000080U, 0x80000000U))
+    keccak_round((uint2)(0x0000800AU, 0), (uint2)(0x8000000AU, 0x80000000U))
+    keccak_round((uint2)(0x80008081U, 0x80000000U), (uint2)(0x00008080U, 0x80000000U))
+    keccak_round((uint2)(0x80000001U, 0), (uint2)(0x80008008U, 0x80000000U))
+    return Abo.y;
 }
-
-#define RoundFunc(sponge, A, B, C, D, E, F, G, H, W, K)                    \
-        brG = Br(sponge, G);                                      \
-        tmp1 = F1(E, Br(sponge, F), brG) + H + W + K;             \
-        tmp2 = tmp1 + Sigma1(Br(sponge, E));                      \
-        brC = Br(sponge, C);                                      \
-        brB = Br(sponge, B);                                      \
-        tmp3 = Ma(Br(sponge, A), brB, brC);                       \
-        tmp4 = tmp3 + Sigma0(Br(sponge, A));                      \
-        H = G;                                                          \
-        G = F;                                                          \
-        F = E;                                                          \
-        E = D + Br(sponge, tmp2);                                          \
-        D = C;                                                          \
-        C = B;                                                          \
-        B = A;                                                          \
-        A = tmp2 + tmp4;
 
 inline uint Ma(uint x, uint y, uint z) { return bitselect(x, y, z ^ x); }
 inline uint Sigma1(uint E) { return S3(E); }
@@ -1485,35 +1465,44 @@ inline uint Smoosh2(uint X) {
     return (X ^ X >> 2) & 3;
 }
 
-inline void Mangle(uint *S)
+#ifdef BITALIGN
+#pragma OPENCL EXTENSION cl_amd_media_ops2 : enable
+#endif
+
+inline void Mangle(uint S[4])
 {
-    uint R = S[0];
+    uint xr = (S[0] ^ (S[0] >> 4)) & 0x0f0f0f0f;
 
-    uint xr = (R ^ (R >> 4)) & 0x0f0f0f0f;
+    S[1] ^= rotate(S[0], 32 - (xr >> 24));
 
-    S[1] ^= rotate(R, 32 - ((xr >> 24) & 0xf));
     xr += 0x01010101;
-    uint tmp = Smoosh2(S[1]);
-    uint RR = rotate(R, 32 - (xr >> ((24 - (tmp << 3)) & 0xff)));
-    int mask = ((tmp ^ tmp >> 1) & 1) - 1;
-    S[2] = select(bitselect(S[2] & ~RR, S[2] ^ RR, (uint)mask), S[2] + ~RR, tmp == 1);
-    xr += 0x01010101;
-    tmp = Smoosh2(S[1] ^ S[2]);
-    RR = rotate(R, 32 - (xr >> ((24 - (tmp << 3)) & 0xff)));
-    mask = ((tmp ^ tmp >> 1) & 1) - 1;
-    S[3] = select(bitselect(S[3] & ~RR, S[3] ^ RR, (uint)mask), S[3] + ~RR, tmp == 1);
     
-    S[0] = R ^ ((S[1] ^ S[2]) + S[3]);
+    uint tmp = Smoosh2(S[1]);
+#ifdef BITALIGN
+    uint RR = ~rotate(S[0], 32 - amd_bfe(xr, 24 - (tmp << 3), 8));
+#else
+    uint RR = ~rotate(S[0], 32 - (xr >> (24 - (tmp << 3))));
+#endif
+    int mask = -((tmp ^ tmp >> 1) & 1);
+    S[2] = select(bitselect(S[2] ^ ~RR, S[2] & RR, (uint)mask), S[2] + RR, tmp == 1);
+    uint t = S[1] ^ S[2];
+
+    xr += 0x01010101;
+    tmp = Smoosh2(t);
+#ifdef BITALIGN
+    RR = ~rotate(S[0], 32 - amd_bfe(xr, 24 - (tmp << 3), 8));
+#else
+    RR = ~rotate(S[0], 32 - (xr >> (24 - (tmp << 3))));
+#endif
+    mask = -((tmp ^ tmp >> 1) & 1);
+    S[3] = select(bitselect(S[3] ^ ~RR, S[3] & RR, (uint)mask), S[3] + RR, tmp == 1);
+    
+    S[0] ^= (t + S[3]);
 }
 
-inline void Absorb(uint *S, uint X)
-{
-    uint *R = S;
-    R[0] ^= X;
-    Mangle(S);
-}
+#define Absorb(S, X) S[0] ^= (X); Mangle(S);
 
-inline uint Squeeze(uint *S)
+inline uint Squeeze(uint S[4])
 {
     uint Y = S[0];
     Mangle(S);
@@ -1524,35 +1513,48 @@ inline uint Br(uint sponge[4], uint X)
 {
     uint R = Squeeze(sponge);
     uint r = R & 3;
-
-    uint Y = 1 << ((R >> 8) & 31);
-
-    uint r3 = r ^ 3, r1 = r ^ 1;
-    uint maskn0 = (uint)~(((r | r >> 1) & 1) - 1);
-    uint maskn1 = (uint)~(((r1 | r1 >> 1) & 1) - 1);
-    uint mask3 = (uint)(((r3 | r3 >> 1) & 1) - 1);
-    return bitselect(X, (X & mask3) ^ (Y & maskn1), Y & maskn0);
+    uint r0 = (R >> 8) & 31;
+    uint Xf = (X >> r0) & 1;
+    uint mask = 8 | Xf << 1 | (Xf ^ 1) << 2;
+    return X ^ (((mask >> r) & 1) << r0);
 }
-#define HR(i) (W[i % 16] = sigma1(W[(i + 14) % 16]) + W[(i + 9) % 16] + sigma0(W[(i + 1) % 16]) + W[i % 16])
 
-#define HHALF1(i, k) Absorb(sponge, D ^ H); RoundFunc(sponge, A, B, C, D, E, F, G, H, W[i], k);
-#define HHALF2(i, w, k) Absorb(sponge, H + D); RoundFunc(sponge, A, B, C, D, E, F, G, H, w, k);
+inline void RoundFunc(uint sponge[4], uint v[8], const uint W, const uint K) {
+        uint brG, tmp1, tmp2, brC, brB, tmp3, tmp4;
+        brG = Br(sponge, v[6]);
+        tmp1 = F1(v[4], Br(sponge, v[5]), brG) + v[7] + W + K;
+        tmp2 = tmp1 + Sigma1(Br(sponge, v[4]));
+        brC = Br(sponge, v[2]);
+        brB = Br(sponge, v[1]);
+        tmp3 = Ma(Br(sponge, v[0]), brB, brC);
+        tmp4 = tmp3 + Sigma0(Br(sponge, v[0]));
+        for (int i = 7; i > 0; i--)
+            v[i] = v[i - 1];
+        v[4] += Br(sponge, tmp2);
+        v[0] = tmp2 + tmp4;
+}
 
-inline uint8 hefty84(const uint* msg, uint sponge[4], uint8 h)
+#define HR(i) (W[i & 0xf] = sigma1(W[(i + 14) & 0xf]) + W[(i + 9) & 0xf] + sigma0(W[(i + 1) & 0xf]) + W[i & 0xf])
+
+#define HHALF1(i, k) Absorb(sponge, v[3] ^ v[7]); RoundFunc(sponge, v, W[i], k);
+#define HHALF2(i, w, k) Absorb(sponge, v[3] + v[7]); RoundFunc(sponge, v, w, k);
+
+inline void hefty84(uint* restrict hashx, uint sponge[4], __global const uint *restrict h)
 {
     uint W[16];
-    W[0] = msg[16];
-    W[1] = msg[17];
-    W[2] = msg[18];
-    W[3] = msg[19];
-    W[4] = msg[20];
+    W[0] = hashx[16];
+    W[1] = hashx[17];
+    W[2] = hashx[18];
+    W[3] = hashx[19];
+    W[4] = hashx[20];;
     W[5] = 0x80000000U;
     W[6] = W[7] = W[8] = W[9] = W[10] = W[11] = W[12] = W[13] = W[14] = 0;
     W[15] = 0x2a0;
-    uint A = h.s0, B = h.s1, C = h.s2, D = h.s3, E = h.s4, F = h.s5, G = h.s6, H = h.s7;
-    uint brG, tmp1, tmp2, brC, brB, tmp3, tmp4;
+    uint v[8];
+    for (int i = 0; i < 8; i++)
+        v[i] = h[i];
 
-    for (int i = 0; i < 16; i++) {
+    for (int i = 3; i < 16; i++) {
         Absorb(sponge, W[i] ^ K[i]);
     }
     for (int i = 0; i < 16; i++) {
@@ -1561,7 +1563,8 @@ inline uint8 hefty84(const uint* msg, uint sponge[4], uint8 h)
     for (int i = 16; i < 64; i++) {
         HHALF2(i, HR(i), K[i]);
     }
-    return h + (uint8)(A, B, C, D, E, F, G, H);
+    for (int i = 0; i < 8; i++)
+        hashx[21 + i] = h[i] + v[i];
 }
 
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
@@ -1571,7 +1574,6 @@ __kernel void search(__global const uint*restrict data,
                                     __global volatile uint*restrict output)
 {
     __local ulong groestl_tables[2048];
-
     uint nonce = get_global_id(0);
     uint hashx[21 + 8];
     uint sponge[4];
@@ -1583,17 +1585,16 @@ __kernel void search(__global const uint*restrict data,
     hashx[19] = SWAP32(nonce);
 #endif
 
-    vstore8(hefty84(hashx, sponge, vload8(0, data + 25)), 0, hashx + 21);
+    hefty84(hashx, sponge, data + 25);
 
     if ((sha256_116_last(hashx) & sha_mask) != 0)
         return;
-    if ((blake512_116_last(hashx) & blake_mask) != 0)
-        return;
     if ((keccak512_116_last(hashx) & keccak_mask) != 0)
+        return;
+    if ((blake512_116_last(hashx) & blake_mask) != 0)
         return;
     if ((groestl512_116_last(hashx, groestl_tables) & groestl_mask) != 0)
         return;
-
 #define FOUND (0xF)
 #define SETFOUND(Xnonce) output[output[FOUND]++] = Xnonce
     SETFOUND(nonce);
