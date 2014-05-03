@@ -1524,7 +1524,7 @@ static bool parse_notify(struct pool *pool, json_t *val)
 
     if (!job_id || !prev_hash || !coinbase1 || !coinbase2 || !bbversion || !nbit || !ntime
 #ifdef USE_HEAVY
-        || !reward
+        || (opt_heavy && !reward)
 #endif
     ) {
         /* Annoying but we must not leak memory */
