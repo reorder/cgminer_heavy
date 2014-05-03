@@ -413,6 +413,9 @@ _clState *initCl(unsigned int gpu, char *name, size_t nameSize)
         } else if (opt_heavy) {
             applog(LOG_INFO, "Selecting heavy kernel");
             clState->chosen_kernel = KL_HEAVY;
+        } else if (opt_hefty) {
+            applog(LOG_INFO, "Selecting hefty kernel");
+            clState->chosen_kernel = KL_HEFTY;
         } else if (!strstr(name, "Tahiti") &&
             /* Detect all 2.6 SDKs not with Tahiti and use diablo kernel */
             (strstr(vbuff, "844.4") ||  // Linux 64 bit ATI 2.6 SDK
@@ -500,6 +503,11 @@ _clState *initCl(unsigned int gpu, char *name, size_t nameSize)
                 strcpy(binaryfilename, HEAVY_KERNNAME);
                 cgpu->vwidth = 1;
                 break;
+            case KL_HEFTY:
+                strcpy(filename, HEFTY_KERNNAME".cl");
+                strcpy(binaryfilename, HEFTY_KERNNAME);
+                cgpu->vwidth = 1;
+                break;
             case KL_NONE: /* Shouldn't happen */
             case KL_DIABLO:
                 strcpy(filename, DIABLO_KERNNAME".cl");
@@ -516,7 +524,7 @@ _clState *initCl(unsigned int gpu, char *name, size_t nameSize)
     }
 
     if (((clState->chosen_kernel == KL_POCLBM || clState->chosen_kernel == KL_DIABLO || clState->chosen_kernel == KL_DIAKGCN) &&
-        clState->vwidth == 1 && clState->hasOpenCL11plus) || opt_scrypt || opt_keccak || opt_skein || opt_heavy)
+        clState->vwidth == 1 && clState->hasOpenCL11plus) || opt_scrypt || opt_keccak || opt_skein || opt_heavy || opt_hefty)
             clState->goffset = true;
 
     if (cgpu->work_size && cgpu->work_size <= clState->max_work_size)
@@ -698,8 +706,8 @@ build:
 
     if (!clState->hasOpenCL11plus)
         strcat(CompilerOptions, " -D OCL1");
-#ifdef USE_HEAVY
-    if (opt_heavy && strstr(name, "Cedar") ||
+#if defined(USE_HEAVY) || defined(USE_HEFTY)
+    if ((opt_heavy || opt_hefty)&& strstr(name, "Cedar") ||
              strstr(name, "Redwood") ||
              strstr(name, "Juniper") ||
              strstr(name, "Cypress" ) ||
@@ -774,7 +782,7 @@ build:
 
     /* Patch the kernel if the hardware supports BFI_INT but it needs to
      * be hacked in */
-    if (patchbfi && !opt_heavy) {
+    if (patchbfi && !(opt_heavy || opt_hefty)) {
         unsigned remaining = binary_sizes[slot];
         char *w = binaries[slot];
         unsigned int start, length;
@@ -920,6 +928,17 @@ built:
         clState->outputBuffer = clCreateBuffer(clState->context, CL_MEM_WRITE_ONLY, BUFFERSIZE, NULL, &status);
     } else
 #endif
+#ifdef USE_HEFTY
+    if (opt_hefty) {
+        clState->hefty_CLbuffer = clCreateBuffer(clState->context, CL_MEM_READ_ONLY, HEFTY_BUFFER_SIZE, NULL, &status);
+        if (status != CL_SUCCESS) {
+            applog(LOG_ERR, "Error %d: clCreateBuffer (hefty_CLbuffer)", status);
+        return NULL;
+        }
+        clState->outputBuffer = clCreateBuffer(clState->context, CL_MEM_WRITE_ONLY, BUFFERSIZE, NULL, &status);
+    } else
+#endif
+
     clState->outputBuffer = clCreateBuffer(clState->context, CL_MEM_WRITE_ONLY, BUFFERSIZE, NULL, &status);
     if (status != CL_SUCCESS) {
         applog(LOG_ERR, "Error %d: clCreateBuffer (outputBuffer)", status);

@@ -42,7 +42,7 @@
 #include "skein.h"
 #endif
 
-#ifdef USE_HEAVY
+#if defined(USE_HEAVY) || defined(USE_HEFTY)
 #include "heavy.h"
 #endif
 
@@ -258,6 +258,10 @@ static enum cl_kernels select_kernel(char *arg)
     if (!strcmp(arg, "heavy"))
         return KL_HEAVY;
 #endif
+#ifdef USE_HEFTY
+    if (!strcmp(arg, "hefty"))
+        return KL_HEFTY;
+#endif
 
 	return KL_NONE;
 }
@@ -276,6 +280,9 @@ char *set_kernel(char *arg)
         return "Cannot specify a kernel with skein";
     if (opt_heavy)
         return "Cannot specify a kernel with heavy";
+    if (opt_hefty)
+        return "Cannot specify a kernel with hefty";
+
 
 	nextptr = strtok(arg, ",");
 	if (nextptr == NULL)
@@ -1389,6 +1396,28 @@ static cl_int queue_heavy_kernel(_clState *clState, dev_blk_ctx *blk, __maybe_un
 }
 #endif
 
+#ifdef USE_HEFTY
+static cl_int queue_hefty_kernel(_clState *clState, dev_blk_ctx *blk, __maybe_unused cl_uint threads)
+{
+        cl_kernel *kernel = &clState->kernel;
+        unsigned int num = 0;
+        cl_int status = 0;
+
+        status = clEnqueueWriteBuffer(clState->commandQueue,
+                clState->hefty_CLbuffer, true, 0,
+                HEFTY_BUFFER_SIZE, &blk->hefty_data[0],
+                0, NULL,NULL);
+
+        CL_SET_ARG(clState->hefty_CLbuffer);
+        CL_SET_ARG(blk->sha_mask);
+        CL_SET_ARG(blk->keccak_mask);
+        CL_SET_ARG(blk->groestl_mask);
+        CL_SET_ARG(blk->blake_mask);
+        CL_SET_ARG(clState->outputBuffer);
+
+        return status;
+}
+#endif
 
 static void set_threads_hashes(unsigned int vectors, unsigned int compute_shaders, int64_t *hashes, size_t *globalThreads,
 			       unsigned int minthreads, __maybe_unused int *intensity, __maybe_unused int *xintensity, __maybe_unused int *rawintensity)
@@ -1713,6 +1742,12 @@ static bool opencl_thread_prepare(struct thr_info *thr)
                 break;
 #endif
 
+#ifdef USE_HEFTY
+            case KL_HEFTY:
+                cgpu->kname = "hefty";
+                break;
+#endif
+
 			case KL_POCLBM:
 				cgpu->kname = "poclbm";
 				break;
@@ -1775,6 +1810,12 @@ static bool opencl_thread_init(struct thr_info *thr)
             thrdata->queue_kernel_parameters = &queue_heavy_kernel;
             break;
 #endif
+#ifdef USE_HEFTY
+        case KL_HEFTY:
+            thrdata->queue_kernel_parameters = &queue_hefty_kernel;
+            break;
+#endif
+
 		default:
 		case KL_DIABLO:
 			thrdata->queue_kernel_parameters = &queue_diablo_kernel;
@@ -1824,6 +1865,11 @@ static bool opencl_prepare_work(struct thr_info __maybe_unused *thr, struct work
 #ifdef USE_HEAVY
     if (opt_heavy)
         heavy_prepare_work(thr, work);
+    else
+#endif
+#ifdef USE_HEFTY
+    if (opt_hefty)
+        hefty_prepare_work(thr, work);
     else
 #endif
 		precalc_hash(&work->blk, (uint32_t *)(work->midstate), (uint32_t *)(work->data + 64));

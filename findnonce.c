@@ -191,7 +191,7 @@ static void *postcalc_hash(void *userdata)
     /* To prevent corrupt values in FOUND from trying to read beyond the
      * end of the res[] array */
     if (unlikely(pcd->res[found] & ~found)) {
-        if (!opt_heavy) { /* overflow normal at heavy low diff */
+        if (!opt_heavy && !opt_hefty) { /* overflow normal at heavy low diff */
             applog(LOG_WARNING, "%s%d: invalid nonce count - HW error",
                     thr->cgpu->drv->name, thr->cgpu->device_id);
             hw_errors++;
@@ -202,7 +202,7 @@ static void *postcalc_hash(void *userdata)
 
     for (entry = 0; entry < pcd->res[found]; entry++) {
         uint32_t nonce = pcd->res[entry];
-        if (opt_keccak || opt_heavy) {
+        if (opt_keccak || opt_heavy || opt_hefty) {
             nonce = swab32(nonce);
         }
 

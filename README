@@ -1,10 +1,11 @@
-This is a modified cgminer 3.7.3 software for Heavycoin stratum mining.
+This is a modified cgminer 3.7.3 software for Mjollnircoin and Heavycoin stratum mining.
 Developed by reorder for HVC.1GH.COM.
 
-Usage: cgminer --heavy --vote <VOTE> -o stratum+tcp://hvcpool.1gh.com:5333 -u YOUR_WALLET_ADDRESS -p x 
+Usage for MNR: cgminer --hefty -o stratum+tcp://mnrpool.1gh.com:6333 -u YOUR_WALLET_ADDRESS -p x 
+Usage for HVC: cgminer --heavy --vote <VOTE> -o stratum+tcp://hvcpool.1gh.com:5333 -u YOUR_WALLET_ADDRESS -p x 
 
 How to build:
-sh autogen.sh --enable-heavy --enable-opencl
+sh autogen.sh --enable-heavy --enable-hefty --enable-opencl
 make
 
 This version of cgminer has been forked off an excellent modification by Martin Danielsen.

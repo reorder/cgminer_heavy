@@ -98,6 +98,22 @@ void heavy_regenhash(struct work *work)
     memcpy(work->hash, &result, 32);
 }
 
+void hefty_regenhash(struct work *work)
+{
+    uint32_t result[8];
+
+    unsigned int data[20], datacopy[20]; // 32-aligned
+    memcpy(datacopy, work->data, 80);
+    flip80(data, datacopy);
+
+    char *hdata = bin2hex((const unsigned char *)data, 80);
+    applog(LOG_DEBUG, "Verifying hefty data %s", hdata);
+    free(hdata);
+
+    heavycoin_hash((const char*)data, 80, (char*)&result);
+    memcpy(work->hash, &result, 32);
+}
+
 uint32_t bitreverse(uint32_t x)
 {
     x = (((x & 0xaaaaaaaa) >> 1) | ((x & 0x55555555) << 1));
@@ -108,6 +124,7 @@ uint32_t bitreverse(uint32_t x)
 
 }
 
+#ifdef USE_HEAVY
 bool heavy_prepare_work(struct thr_info *thr, struct work *work)
 {
     unsigned int src[21], dst[21]; // 32-aligned
@@ -120,6 +137,8 @@ bool heavy_prepare_work(struct thr_info *thr, struct work *work)
     applog(LOG_DEBUG, "Generated heavy data %s", hdata);
     free(hdata);
     tbits = 31 + ((int)round(log(work->sdiff) / log(2)));
+    if (tbits < 16)
+        tbits = 16;
     work->blk.sha_mask = bitreverse((1 << ((tbits + 3) / 4)) - 1);
     work->blk.keccak_mask = bitreverse((1 << ((tbits + 2) / 4)) - 1);
     work->blk.groestl_mask = bitreverse((1 << ((tbits + 1) / 4)) - 1);
@@ -127,4 +146,26 @@ bool heavy_prepare_work(struct thr_info *thr, struct work *work)
     applog(LOG_DEBUG, "Heavy masks for %f, tbits %d: sha 0x%08x, keccak 0x%08x, groestl 0x%08x, blake 0x%08x", work->sdiff, tbits, work->blk.sha_mask, work->blk.keccak_mask, work->blk.groestl_mask, work->blk.blake_mask);
     return 1;
 }
-
+#endif
+#ifdef USE_HEFTY
+bool hefty_prepare_work(struct thr_info *thr, struct work *work)
+{    unsigned int src[20], dst[20]; // 32-aligned
+    int tbits;
+    memcpy(src, work->data, 80);
+    flip80(dst, src);
+    hefty_midstate((unsigned char *)dst, work->blk.hefty_data + 80);
+    memcpy(work->blk.hefty_data, work->data, 80);
+    char *hdata = bin2hex(work->blk.hefty_data, 80);
+    applog(LOG_DEBUG, "Generated hefty data %s", hdata);
+    free(hdata);
+    tbits = 31 + ((int)round(log(work->sdiff) / log(2)));
+    if (tbits < 16)
+        tbits = 16;
+    work->blk.sha_mask = bitreverse((1 << ((tbits + 3) / 4)) - 1);
+    work->blk.keccak_mask = bitreverse((1 << ((tbits + 2) / 4)) - 1);
+    work->blk.groestl_mask = bitreverse((1 << ((tbits + 1) / 4)) - 1);
+    work->blk.blake_mask = bitreverse((1 << ((tbits + 0) / 4)) - 1);
+    applog(LOG_DEBUG, "Hefty masks for %f, tbits %d: sha 0x%08x, keccak 0x%08x, groestl 0x%08x, blake 0x%08x", work->sdiff, tbits, work->blk.sha_mask, work->blk.keccak_mask, work->blk.groestl_mask, work->blk.blake_mask);
+    return 1;
+}
+#endif

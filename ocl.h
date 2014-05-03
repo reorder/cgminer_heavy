@@ -31,6 +31,9 @@ typedef struct {
 #ifdef USE_HEAVY
     cl_mem heavy_CLbuffer; 
 #endif
+#ifdef USE_HEFTY
+    cl_mem hefty_CLbuffer;
+#endif
 	bool hasBitAlign;
 	bool hasOpenCL11plus;
 	bool hasOpenCL12plus;

@@ -49,6 +49,9 @@ extern char *curly;
 #ifdef USE_HEAVY
 #define HEAVY_BUFFER_SIZE ((21+4+8)*4)
 #endif
+#ifdef USE_HEFTY
+#define HEFTY_BUFFER_SIZE ((20+4+8)*4)
+#endif
 #ifdef STDC_HEADERS
 # include <stdlib.h>
 # include <stddef.h>
@@ -427,6 +430,7 @@ enum cl_kernels {
     KL_KECCAK,
     KL_SKEIN,
     KL_HEAVY,
+    KL_HEFTY,
 };
 
 enum dev_reason {
@@ -1228,6 +1232,11 @@ extern char opt_vote[2];
 #define opt_heavy (0)
 #define opt_vote ("\x02\x00")
 #endif
+#ifdef USE_HEFTY
+extern bool opt_hefty;
+#else
+#define opt_hefty (0)
+#endif
 extern double total_secs;
 extern int mining_threads;
 extern int total_devices;
@@ -1292,6 +1301,11 @@ typedef struct {
 #endif
 #ifdef USE_HEAVY
     unsigned char heavy_data[HEAVY_BUFFER_SIZE];
+#endif
+#ifdef USE_HEFTY
+    unsigned char hefty_data[HEFTY_BUFFER_SIZE];
+#endif
+#if defined(USE_HEAVY) || defined(USE_HEFTY)
     uint32_t sha_mask;
     uint32_t keccak_mask;
     uint32_t groestl_mask;

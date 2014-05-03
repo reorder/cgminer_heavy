@@ -137,6 +137,9 @@ bool opt_heavy;
 char opt_vote[2];
 char *opt_vote_hex;
 #endif
+#ifdef USE_HEFTY
+bool opt_hefty;
+#endif
 #endif
 bool opt_restart = true;
 bool opt_nogpu;
@@ -1502,6 +1505,11 @@ static struct opt_table opt_config_table[] = {
              opt_set_vote, NULL, NULL,
              "Heavycoin vote"),
 #endif
+#ifdef USE_HEFTY
+    OPT_WITHOUT_ARG("--hefty",
+            opt_set_bool, &opt_hefty,
+            "Use the hefty algorithm for mining (mjollnircoin)"),
+#endif
     OPT_WITH_ARG("--sharelog",
              set_sharelog, NULL, NULL,
              "Append share log to file"),
@@ -2169,6 +2177,12 @@ static bool getwork_decode(json_t *res_val, struct work *work)
     if (unlikely(!jobj_binary(res_val, "data", work->data, sizeof(work->data), true))) {
         applog(LOG_ERR, "JSON inval data");
         return false;
+    }
+    if (opt_heavy || opt_hefty) {
+        unsigned int datacopy[20], datacopyrev[20];
+        memcpy(datacopy, work->data, 80);
+        flip80(datacopyrev, datacopy);
+        memcpy(work->data, datacopyrev, 80);
     }
 
     if (!jobj_binary(res_val, "midstate", work->midstate, sizeof(work->midstate), false)) {
@@ -4000,12 +4014,22 @@ static void rebuild_hash(struct work *work)
 {
     if (opt_scrypt)
         scrypt_regenhash(work);
+#ifdef USE_KECCAK
     else if (opt_keccak)
         keccak_regenhash(work);
+#endif
+#ifdef USE_SKEIN
     else if (opt_skein)
         skein_regenhash(work);
+#endif
+#ifdef USE_HEAVY
     else if (opt_heavy)
         heavy_regenhash(work);
+#endif
+#ifdef USE_HEFTY
+    else if (opt_hefty)
+        hefty_regenhash(work);
+#endif
     else
         regen_hash(work);
 }
@@ -4300,9 +4324,11 @@ static int block_sort(struct block *blocka, struct block *blockb)
 /* Decode the current block difficulty which is in packed form */
 static void set_blockdiff(const struct work *work)
 {
-    uint8_t pow = work->data[72];
+    uint32_t bitscopy;
+    memcpy(&bitscopy, work->data + 72, 4);
+    uint8_t pow = *((uint8_t *)&bitscopy);
     int powdiff = (8 * (0x1d - 3)) - (8 * (pow - 3));
-    uint32_t diff32 = be32toh(*((uint32_t *)(work->data + 72))) & 0x00FFFFFF;
+    uint32_t diff32 = be32toh(bitscopy) & 0x00FFFFFF;
     double numerator = 0xFFFFULL << powdiff;
     double ddiff = numerator / (double)diff32;
 
@@ -4311,8 +4337,7 @@ static void set_blockdiff(const struct work *work)
         suffix_string(ddiff, block_diff, sizeof(block_diff), 0);
         current_diff = ddiff;
         sprintf(block_poolname, "%s", work->pool->poolname);
-        if (opt_morenotices)
-            applog(LOG_NOTICE, "Network diff set to %s", block_diff);
+        applog(opt_morenotices ? LOG_NOTICE : LOG_DEBUG, "Network diff %f set to %s", ddiff, block_diff);
     }
 }
 
@@ -4705,6 +4730,9 @@ void write_config(FILE *fcfg)
                         break;
                     case KL_HEAVY:
                         fprintf(fcfg, "heavy");
+                        break;
+                    case KL_HEFTY:
+                        fprintf(fcfg, "hefty");
                         break;
                 }
             }
@@ -5832,7 +5860,7 @@ static void *stratum_sthread(void *userdata)
 {
     struct pool *pool = (struct pool *)userdata;
     char threadname[16];
-#ifdef USE_HEAVY
+#if defined(USE_HEAVY) || defined(USE_HEFTY)
     char* ntimehex;
     char ntimebuf[4];
 #endif
@@ -5876,7 +5904,7 @@ static void *stratum_sthread(void *userdata)
         /* This work item is freed in parse_stratum_response */
         sshare->work = work;
         nonce = *((uint32_t *)(work->data + 76));
-        if (opt_heavy)
+        if (opt_heavy || opt_hefty)
             nonce = swab32(nonce);
         __bin2hex(noncehex, (const unsigned char *)&nonce, 4);
         memset(s, 0, 1024);
@@ -5891,21 +5919,32 @@ static void *stratum_sthread(void *userdata)
         memcpy(nonce2, &work->nonce2, sizeof(uint32_t));
         __bin2hex(nonce2hex, (const unsigned char *)nonce2, work->nonce2_len);
 
-#ifdef USE_HEAVY
-        if (opt_heavy) {
+#if defined(USE_HEAVY) || defined(USE_HEFTY)
+        if (opt_heavy || opt_hefty) {
             hex2bin(ntimebuf, work->ntime, 8);
             *((uint32_t*)ntimebuf) = swab32(*((uint32_t*)ntimebuf));
             ntimehex = bin2hex(ntimebuf, 4);
-            snprintf(s, sizeof(s),
-                "{\"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\": %d, \"method\": \"mining.submit\"}",
-                pool->rpc_user, work->job_id, nonce2hex, ntimehex, noncehex, opt_vote_hex, sshare->id);
+#ifdef USE_HEAVY
+            if (opt_heavy) {
+                snprintf(s, sizeof(s),
+                    "{\"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\": %d, \"method\": \"mining.submit\"}",
+                    pool->rpc_user, work->job_id, nonce2hex, ntimehex, noncehex, opt_vote_hex, sshare->id);
+            }
+#endif
+#ifdef USE_HEFTY
+            if (opt_hefty) {
+                snprintf(s, sizeof(s),
+                    "{\"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\": %d, \"method\": \"mining.submit\"}",
+                    pool->rpc_user, work->job_id, nonce2hex, ntimehex, noncehex, sshare->id);
+            }
+#endif
             free(ntimehex);
         } else {
 #endif
             snprintf(s, sizeof(s),
                 "{\"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\": %d, \"method\": \"mining.submit\"}",
                 pool->rpc_user, work->job_id, nonce2hex, work->ntime, noncehex, sshare->id);
-#ifdef USE_HEAVY
+#if defined(USE_HEAVY) || defined(USE_HEFTY)
         }
 #endif
         applog(LOG_INFO, "Submitting share %08lx to %s", (long unsigned int)htole32(hash32[6]), pool->poolname);
@@ -6251,14 +6290,14 @@ static void gen_hash(unsigned char *data, unsigned char *hash, int len)
 {
     unsigned char hash1[32];
 
-#ifdef USE_HEAVY
-    if (opt_heavy) {
+#if defined(USE_HEAVY) || defined(USE_HEFTY)
+    if (opt_heavy || opt_hefty) {
         heavycoin_hash(data, len, hash);
     } else {
 #endif
     sha256(data, len, hash1);
     sha256(hash1, 32, hash);
-#ifdef USE_HEAVY
+#if defined(USE_HEAVY) || defined(USE_HEFTY)
     }
 #endif
 }
@@ -6501,7 +6540,7 @@ bool test_nonce(struct work *work, uint32_t nonce)
     uint32_t *hash_32 = (uint32_t *)(work->hash + 28);
     uint32_t diff1targ;
     rebuild_nonce(work, nonce);
-    diff1targ = (opt_scrypt || opt_heavy) ? 0x0000ffffUL : ((opt_keccak || opt_skein) ? 0x000000ffUL : 0);
+    diff1targ = (opt_scrypt || opt_heavy || opt_hefty) ? 0x0000ffffUL : ((opt_keccak || opt_skein) ? 0x000000ffUL : 0);
     if (le32toh(*hash_32) > diff1targ) {
         applog(LOG_DEBUG, "Invalid nonce %08x hash %08x", nonce, le32toh(*hash_32));
         return false;
