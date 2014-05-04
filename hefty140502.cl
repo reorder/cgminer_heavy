@@ -434,7 +434,7 @@ inline uint blake512_112_last(const uint *msg)
     MSGB = as_ulong((uint2)(msg[23], msg[22]));
     MSGC = as_ulong((uint2)(msg[25], msg[24]));
     MSGD = as_ulong((uint2)(msg[27], msg[26]));
-    MSGE = 0x8000000000000000UL;
+    MSGE = as_ulong((uint2)(0, 0x80000000U));
     MSGF = 0;
 
     V0 = 0x6A09E667F3BCC908UL;
@@ -1203,7 +1203,7 @@ inline uint groestl512_112_last(const uint *msg, __local ulong *tables)
     ZB = TB = as_ulong((uint2)(SWAP32(msg[22]), SWAP32(msg[23])));
     ZC = TC = as_ulong((uint2)(SWAP32(msg[24]), SWAP32(msg[25])));
     ZD = TD = as_ulong((uint2)(SWAP32(msg[26]), SWAP32(msg[27])));
-    ZE = TE = 0x80UL;
+    ZE = TE = as_ulong((uint2)(0x80, 0));
     ZF = 0x0100000000000000UL;
     TF = 0x0100000000000000UL ^ 0x0002000000000000UL;
 
