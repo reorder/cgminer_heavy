@@ -1515,10 +1515,11 @@ inline uint Br(uint sponge[4], uint X)
     uint r = R & 3;
 #ifdef BITALIGN
     uint r0 = amd_bfe(R, 8, 3);
+    uint Xf = amd_bfe(X, r0, 1);
 #else
     uint r0 = (R >> 8) & 31;
-#endif
     uint Xf = (X >> r0) & 1;
+#endif
     uint mask = 8 | Xf << 1 | (Xf ^ 1) << 2;
 #ifdef BITALIGN
     return X ^ (amd_bfe(mask, r, 1) << r0);
