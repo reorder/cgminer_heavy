@@ -1513,7 +1513,11 @@ inline uint Br(uint sponge[4], uint X)
 {
     uint R = Squeeze(sponge);
     uint r = R & 3;
+#ifdef BITALIGN
+    uint r0 = amd_bfe(R, 8, 3);
+#else
     uint r0 = (R >> 8) & 31;
+#endif
     uint Xf = (X >> r0) & 1;
     uint mask = 8 | Xf << 1 | (Xf ^ 1) << 2;
 #ifdef BITALIGN
