@@ -1516,7 +1516,11 @@ inline uint Br(uint sponge[4], uint X)
     uint r0 = (R >> 8) & 31;
     uint Xf = (X >> r0) & 1;
     uint mask = 8 | Xf << 1 | (Xf ^ 1) << 2;
+#ifdef BITALIGN
+    return X ^ (amd_bfe(mask, r, 1) << r0);
+#else
     return X ^ (((mask >> r) & 1) << r0);
+#endif
 }
 
 inline void RoundFunc(uint sponge[4], uint v[8], const uint W, const uint K) {
